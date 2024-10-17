@@ -1,0 +1,58 @@
+include:
+ - template: Terraform/Base.gitlab-ci.yml
+ - template: Jobs/SAST-IaC.gitlab-ci.yml
+
+stages:
+ - validate
+ - test
+ - build
+ - deploy
+ - cleanup
+
+variables:
+ IGNORE_TF_DEPRECATION_WARNING: "true"
+ SECURE_ANALYZERS_PREFIX: "ccr.ccs.tencentyun.com/gitlab-org"
+
+image:
+ name: "ccr.ccs.tencentyun.com/gitlab-org/terraform-images:1.4"
+
+before_script:
+ - cp /etc/gitlab-runner/certs/gitlab.home.local.crt /usr/local/share/ca-certificates/ca.crt
+ - update-ca-certificates
+ - |-
+   cat <<EOF > ~/.terraformrc
+   provider_installation {
+     network_mirror {
+       url = "https://obs.home.local/mirror/"
+     }
+   }
+   EOF
+
+fmt:
+ extends: .terraform:fmt
+ needs: []
+
+validate:
+ extends: .terraform:validate
+ needs: []
+
+build:
+ extends: .terraform:build
+
+deploy:
+ extends: .terraform:deploy
+ rules:
+   - if: $CI_COMMIT_TITLE == "deploy"
+     when: on_success
+ dependencies:
+   - build
+ environment:
+   name: $TF_STATE_NAME
+
+cleanup:
+ extends: .terraform:destroy
+ environment:
+   name: $TF_STATE_NAME
+ rules:
+   - if: $CI_COMMIT_TITLE == "destroy"
+     when: on_success
