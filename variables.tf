@@ -20,17 +20,9 @@ variable "alicloud_resources" {
         {
           instance = [
             {
-              name = "m-p-app-toolchain-001"
-              account = [
-                { name = "super", password = "Passw0rd", type = "Super", privilege = "ReadWrite", db_names = ["d_test"] },
-                { name = "user", password = "Passw0rd", privilege = "ReadOnly", db_names = ["d_test"] }
-              ]
-              database = [
-                {
-                  name          = "d_test"
-                  character_set = "utf8mb4"
-                }
-              ]
+              name     = "m-p-app-toolchain-001"
+              account  = []
+              database = []
             }
           ]
           vpc            = "vpc-p-network-toolchain-cn-shanghai-001"
