@@ -1,58 +1,69 @@
 include:
- - template: Terraform/Base.gitlab-ci.yml
- - template: Jobs/SAST-IaC.gitlab-ci.yml
+  - template: Terraform/Base.gitlab-ci.yml
+  - template: Jobs/SAST-IaC.gitlab-ci.yml
 
 stages:
- - validate
- - test
- - build
- - deploy
- - cleanup
+  - validate
+  - test
+  - build
+  - deploy
+  - cleanup
 
 variables:
- IGNORE_TF_DEPRECATION_WARNING: "true"
- SECURE_ANALYZERS_PREFIX: "ccr.ccs.tencentyun.com/gitlab-org"
+  IGNORE_TF_DEPRECATION_WARNING: "true"
+  SECURE_ANALYZERS_PREFIX: "ccr.ccs.tencentyun.com/gitlab-org"
 
 image:
- name: "ccr.ccs.tencentyun.com/gitlab-org/terraform-images:1.4"
+  name: "ccr.ccs.tencentyun.com/gitlab-org/terraform-images:1.4"
+
+cache:
+  key: $CI_COMMIT_REF_SLUG
+  paths:
+    - ${TF_ROOT}/.terraform/
+  policy: pull
 
 before_script:
- - cp /etc/gitlab-runner/certs/gitlab.home.local.crt /usr/local/share/ca-certificates/ca.crt
- - update-ca-certificates
- - |-
-   cat <<EOF > ~/.terraformrc
-   provider_installation {
-     network_mirror {
-       url = "https://obs.home.local/mirror/"
-     }
-   }
-   EOF
+  - cp /etc/gitlab-runner/certs/gitlab.home.local.crt /usr/local/share/ca-certificates/ca.crt
+  - update-ca-certificates
+  - |-
+    cat <<EOF > ~/.terraformrc
+    provider_installation {
+      network_mirror {
+        url = "https://obs.home.local/mirror/"
+      }
+    }
+    EOF
 
 fmt:
- extends: .terraform:fmt
- needs: []
+  extends: .terraform:fmt
+  needs: []
 
 validate:
- extends: .terraform:validate
- needs: []
+  extends: .terraform:validate
+  cache:
+    key: $CI_COMMIT_REF_SLUG
+    paths:
+      - ${TF_ROOT}/.terraform/
+    policy: pull-push
+  needs: []
 
 build:
- extends: .terraform:build
+  extends: .terraform:build
 
 deploy:
- extends: .terraform:deploy
- rules:
-   - if: $CI_COMMIT_TITLE == "deploy"
-     when: on_success
- dependencies:
-   - build
- environment:
-   name: $TF_STATE_NAME
+  extends: .terraform:deploy
+  rules:
+    - if: $CI_COMMIT_TITLE == "deploy"
+      when: on_success
+  dependencies:
+    - build
+  environment:
+    name: $TF_STATE_NAME
 
 cleanup:
- extends: .terraform:destroy
- environment:
-   name: $TF_STATE_NAME
- rules:
-   - if: $CI_COMMIT_TITLE == "destroy"
-     when: on_success
+  extends: .terraform:destroy
+  environment:
+    name: $TF_STATE_NAME
+  rules:
+    - if: $CI_COMMIT_TITLE == "destroy"
+      when: on_success
